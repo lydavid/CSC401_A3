@@ -1,0 +1,32 @@
+STUDENT                  FUBAR                                                                                                                                                                                                                                              
+                         Section   Part                                Subpart                         Mark   out of                                                                                                                                                      
+Speaker Identification   2.1       Correct b_m_x computation                                           4      4 
+			           Correct p_m_x computation					       3      3
+				   Correct logLik computation 					       3      3
+												       10     10
+
+			 2.2	   Correct initialization                                              1      1                                                                                                                                                           
+                                   Correct looping                                                     1      1                                                                                                                                                           
+                                   Correct update functions                                            3      3                                                                                                                                                                                                               
+                                                                                                       5      5   
+                                                                                                                                                      
+                         2.3       Selection of speakers                                               1      1
+                                   Proportion of correct results                                       3      3                                                                                                                                      
+                                   Good reporting format                                               1      1                                                                                                                                                           
+                                                                                                       5      5
+                                                                                                                                                          
+                         2.4       Experiments with M, e, and S                                        4      4        
+                                   Question 1: Improvements                                            1      2        
+                                   Question 2: Decision of rejection                                   2      2                                                                                                                                                           
+                                   Question 3: Alternatives                                            2      2                                                                                                                                                           
+                                                                                                       10     10 
+                                                                                                                                                         
+Speech Recognition       3         Algorithm implemented correctly     Structure                       3      3                                                                                                                     
+                                                                       Distance updating               2      2                                                                                                                                                           
+                                   Correct results                                                     5      5                                                                                                                                                           
+                                                                       Distance                        10     10   
+                                                                                                                                                       
+                                                                       Other deduction                 0      0                                                                                                                                                           
+Bonus                                                                                                  10     10   
+                                                                                                                                                       
+TOTAL                                                                                                  0      40                                                                                                                                                          
