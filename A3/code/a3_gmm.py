@@ -2,6 +2,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import os, fnmatch
 import random
+import scipy
 
 #dataDir = '/u/cs401/A3/data/'
 dataDir = '../data/' # TODO: change this back before submission
@@ -21,33 +22,40 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
 
         As you'll see in tutorial, for efficiency, you can precompute something for 'm' that applies to all x outside of this function.
         If you do this, you pass that precomputed component in preComputedForM
-	
-		m (int): index of gaussian mixture component (0 to M-1)
-		x ((d, 1) numpy array): 
-		myTheta (theta): contains omega/mu/Sigma for this m_th component
-		preComputedForM (list of floats): list of precomputed term for each m
+
+        m (int): index of gaussian mixture component (0 to M-1)
+        x ((1, d) numpy array): d-dimensional vector
+        myTheta (theta): contains omega/mu/Sigma for this m_th component
+        preComputedForM (list of floats): list of precomputed term for each m
     '''
 
     b = 0
     d = np.shape(x)[0]
 
     if not preComputedForM:
-        print("empty")
 
         # actually, just compute whole thing (using original equation from handout rather than expanded out version from tut)
         b_1 = 0
         b_2 = 1
 
-        for n in range(0, d):  # get the d of the d-dimensional vector
-            b_1 += (x[n] - myTheta.mu[m][n]) ** 2.0 / myTheta.Sigma[m][n]
+        for n in range(d):  # get the d of the d-dimensional vector
+            print("x[n]=%f" % x[n])
+            b_1 += ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
 
             b_2 *= myTheta.Sigma[m][n]
 
+
+        print("1 %f" % b_1)
         b_1 *= -0.5
+        print("2 %f" % b_1)
+        print("2.1 %f" % np.exp(b_1))
         b_1 = np.exp(b_1)
+        print("3 %f" % b_1)
 
         b_2 **= 0.5
         b_2 *= (2 * np.pi) ** (d / 2.0)
+
+        print("%f / %f" % (b_1, b_2))
 
         b = b_1 / b_2
         b = np.log(b)
@@ -65,7 +73,7 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
         first_half = 0
 
         for n in range(0, d):  # up to, including d -> actually, it should be indexed from 0
-            first_half += 0.5 * (x[n] ** 2) * (myTheta.Sigma[m][n] ** -1) - (myTheta.mu[m][n] * x[n] * (myTheta[m][n] ** -1))
+            first_half += 0.5 * (x[n] ** 2) * (myTheta.Sigma[m][n] ** -1) - (myTheta.mu[m][n] * x[n] * (myTheta.Sigma[m][n] ** -1))
 
         first_half = -first_half # add minus in front
         b = first_half - second_half # make sure to not compute second half with that minus sign in front
@@ -84,8 +92,26 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
 def log_p_m_x( m, x, myTheta):
     ''' Returns the log probability of the m^{th} component given d-dimensional vector x, and model myTheta
         See equation 2 of handout
+
+        m (int): index of gaussian mixture component (0 to M-1)
+        x ((1, d) numpy array): d-dimensional vector
+        myTheta (theta): contains omega/mu/Sigma for this m_th component
     '''
-    print ( 'TODO' )
+
+
+    # how would we pass in precomputation for m if we have to call this function here...
+    numerator = np.log(myTheta.omega[m]) + log_b_m_x(m, x, myTheta)
+
+
+    M = np.shape(myTheta.omega)[0]
+
+    a = np.zeros(M)  # stores all our b_k(x_t) for k=1..M, which are in log
+    for k in range(M):
+        a[k] = np.log(myTheta.omega[k]) + log_b_m_x(k, x, myTheta) # maybe use this instead?
+
+    denominator = scipy.special.logsumexp(a)
+
+    return numerator - denominator  # cause it's still in base e
 
     
 def logLik( log_Bs, myTheta ):
@@ -106,7 +132,15 @@ def logLik( log_Bs, myTheta ):
 
     
 def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
-    ''' Train a model for the given speaker. Returns the theta (omega, mu, sigma)'''
+    ''' 
+        Train a model for the given speaker. Returns the theta (omega, mu, sigma)
+
+        speaker (string): speaker's identifying name
+        X ((N, d) numpy array): data matrix, N is the number of frames/rows, d the data dimension
+        M (int): number of GMMs
+        epsilon (float): 
+        maxIter (int): max number of iterations before breaking
+    '''
     myTheta = theta( speaker, M, X.shape[1] )
 
 
@@ -116,12 +150,31 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     # we chose random between 1.0 and 2.0 to ensure we never get an unlucky streak of low numbers and possibly not add up to 1.0
     # actually we don't have to, cause since we divide by sum of all values, it will also add to 1.0
 
+    N = np.shape(X)[0]
+    d = X.shape[1]
 
 
-    myTheta.Sigma = np.eye(N=M, M=X.shape[1])
+    # init mu to random MFCC vector from X
+    for m in range(M):
+        myTheta.mu[m] = X[random.randint(0, N)]
+
+    #print(myTheta.mu)
+    
+    myTheta.Sigma = np.ones((M, d))#np.eye(N=M, M=X.shape[1])
     #print(myTheta.Sigma)
     #print(myTheta.omega)
     #print(np.sum(myTheta.omega))
+
+    #print(scipy.special.logsumexp(-44444))
+    print(np.exp(-0.5) * np.exp(2))
+    print(np.exp(-1))
+    
+    for n in range(N):
+        for m in range(M):
+
+            #print(log_b_m_x(m, X[n,], myTheta), flush=True)
+            pass
+
 
     return myTheta
 
