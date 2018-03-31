@@ -1,7 +1,8 @@
 import os
 import numpy as np
 
-dataDir = '/u/cs401/A3/data/'
+#dataDir = '/u/cs401/A3/data/'
+dataDir = '../data' # TODO: change this back before submission
 
 def Levenshtein(r, h):
     """                                                                         

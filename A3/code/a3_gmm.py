@@ -3,14 +3,16 @@ import numpy as np
 import os, fnmatch
 import random
 
-dataDir = '/u/cs401/A3/data/'
+#dataDir = '/u/cs401/A3/data/'
+dataDir = '../data/' # TODO: change this back before submission
 
 class theta:
     def __init__(self, name, M=8,d=13):
         self.name = name
-        self.omega = np.zeros((M,1))
-        self.mu = np.zeros((M,d))
-        self.Sigma = np.zeros((M,d))
+        self.omega = np.zeros((M,1)) # weights of each m GMM: initialize randomly, sum should equal 1 at all time cause it's the prob of a GMM
+        self.mu = np.zeros((M,d))  # means: should init with actual random MFCC vector from each speaker
+        self.Sigma = np.zeros((M,d))  # should init this with identity matrix, do it before passing to in train, before passing to bmx etc
+        # but Sigma isn't an n x n matrix...
 
 
 def log_b_m_x( m, x, myTheta, preComputedForM=[]):
@@ -19,11 +21,66 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
 
         As you'll see in tutorial, for efficiency, you can precompute something for 'm' that applies to all x outside of this function.
         If you do this, you pass that precomputed component in preComputedForM
-
+	
+		m (int): index of gaussian mixture component (0 to M-1)
+		x ((d, 1) numpy array): 
+		myTheta (theta): contains omega/mu/Sigma for this m_th component
+		preComputedForM (list of floats): list of precomputed term for each m
     '''
-    print ( 'TODO' )
 
+    b = 0
+    d = np.shape(x)[0]
+
+    if not preComputedForM:
+        print("empty")
+
+        # actually, just compute whole thing (using original equation from handout rather than expanded out version from tut)
+        b_1 = 0
+        b_2 = 1
+
+        for n in range(0, d):  # get the d of the d-dimensional vector
+            b_1 += (x[n] - myTheta.mu[m][n]) ** 2.0 / myTheta.Sigma[m][n]
+
+            b_2 *= myTheta.Sigma[m][n]
+
+        b_1 *= -0.5
+        b_1 = np.exp(b_1)
+
+        b_2 **= 0.5
+        b_2 *= (2 * np.pi) ** (d / 2.0)
+
+        b = b_1 / b_2
+        b = np.log(b)
+
+    else:
+
+        print("precomputation for this m exists")
+
+        # we then assume that in the m_th position of preComputedForM contains the second half computation corresponding to this m
+        try:
+            second_half = preComputedForM[m]  # for the second half of the long equation from the tutorial slides independent of x
+        except IndexError:
+            print("preComputedForM does not contain precomputation for this m")
+
+        first_half = 0
+
+        for n in range(0, d):  # up to, including d -> actually, it should be indexed from 0
+            first_half += 0.5 * (x[n] ** 2) * (myTheta.Sigma[m][n] ** -1) - (myTheta.mu[m][n] * x[n] * (myTheta[m][n] ** -1))
+
+        first_half = -first_half # add minus in front
+        b = first_half - second_half # make sure to not compute second half with that minus sign in front
+
+    # only returns the log prob
+
+    # thus to have access to precomputation for m, we can make a helper function
+    # but include a case in this function to compute the whole thing if not given precomputation
+
+    # return either a single log probability for x
+    # or a Tx1 array of log probabilities for X, each entry corresponding to frame t=1..T
+    # which it returns will be based on the dimensions of x
+    return b
     
+
 def log_p_m_x( m, x, myTheta):
     ''' Returns the log probability of the m^{th} component given d-dimensional vector x, and model myTheta
         See equation 2 of handout
@@ -45,11 +102,27 @@ def logLik( log_Bs, myTheta ):
     '''
     print( 'TODO' )
 
+    # log_Bs a list of log probabilities of x_t in different components m
+
     
 def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     ''' Train a model for the given speaker. Returns the theta (omega, mu, sigma)'''
     myTheta = theta( speaker, M, X.shape[1] )
-    print ('TODO')
+
+
+
+    myTheta.omega = np.random.rand(M, 1)  # initialize with random values
+    myTheta.omega /= np.sum(myTheta.omega)  # divide matrix by sum of its values to make sure new sum of values equal 1
+    # we chose random between 1.0 and 2.0 to ensure we never get an unlucky streak of low numbers and possibly not add up to 1.0
+    # actually we don't have to, cause since we divide by sum of all values, it will also add to 1.0
+
+
+
+    myTheta.Sigma = np.eye(N=M, M=X.shape[1])
+    #print(myTheta.Sigma)
+    #print(myTheta.omega)
+    #print(np.sum(myTheta.omega))
+
     return myTheta
 
 
@@ -105,3 +178,5 @@ if __name__ == "__main__":
         numCorrect += test( testMFCCs[i], i, trainThetas, k ) 
     accuracy = 1.0*numCorrect/len(testMFCCs)
 
+    # my test
+    print("Accuracy %.2f" % accuracy)
