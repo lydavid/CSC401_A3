@@ -38,19 +38,26 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
         b_1 = 0
         b_2 = 1
 
+        arr = np.zeros(d)
+
         for n in range(d):  # get the d of the d-dimensional vector
-            print("x[n]=%f" % x[n])
-            b_1 += ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
+            #print("x[n]=%f" % x[n])
+            #b_1 += ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
+
+            arr[n] = -0.5 * ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
 
             b_2 *= myTheta.Sigma[m][n]
 
 
+        #print("1 %f" % b_1)
+        #b_1 *= -0.5
+        #print("2 %f" % b_1)
+        #print("2.1 %f" % np.exp(b_1))
+        #b_1 = np.exp(b_1) # instead of this, store all comp of b_1 in array, use logsumexp on it
+        b_1 = scipy.special.logsumexp(arr)  # final result is not in e
         print("1 %f" % b_1)
-        b_1 *= -0.5
-        print("2 %f" % b_1)
-        print("2.1 %f" % np.exp(b_1))
         b_1 = np.exp(b_1)
-        print("3 %f" % b_1)
+        print ("2 %f" % b_1)  # e^this
 
         b_2 **= 0.5
         b_2 *= (2 * np.pi) ** (d / 2.0)
@@ -58,7 +65,7 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
         print("%f / %f" % (b_1, b_2))
 
         b = b_1 / b_2
-        b = np.log(b)
+        b = np.log(b)  # final return should be in log e
 
     else:
 
@@ -109,7 +116,8 @@ def log_p_m_x( m, x, myTheta):
     for k in range(M):
         a[k] = np.log(myTheta.omega[k]) + log_b_m_x(k, x, myTheta) # maybe use this instead?
 
-    denominator = scipy.special.logsumexp(a)
+    denominator = scipy.special.logsumexp(a)  # this is not base e
+    denominator = 
 
     return numerator - denominator  # cause it's still in base e
 
@@ -161,18 +169,19 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     #print(myTheta.mu)
     
     myTheta.Sigma = np.ones((M, d))#np.eye(N=M, M=X.shape[1])
+    #myTheta.Sigma = np.identity(M)
     #print(myTheta.Sigma)
     #print(myTheta.omega)
     #print(np.sum(myTheta.omega))
 
     #print(scipy.special.logsumexp(-44444))
-    print(np.exp(-0.5) * np.exp(2))
-    print(np.exp(-1))
+    #print(np.exp(-0.5) * np.exp(2))
+    #print(np.exp(-1))
     
     for n in range(N):
         for m in range(M):
 
-            #print(log_b_m_x(m, X[n,], myTheta), flush=True)
+            print(log_b_m_x(m, X[n,], myTheta), flush=True)
             pass
 
 
