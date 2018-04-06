@@ -133,12 +133,14 @@ def log_p_m_x( m, x, myTheta):
     denominator = scipy.special.logsumexp(a)  # np.log(np.exp(a[0]) + ... + np.exp(a[M]))
     # np.exp(a[k]) becomes non base e again, and their sum is what we want in the denom of eqn 2
     # np.log(that) then puts our denom in base e
-
+    print("denominator=%f" % denominator)
 
     # for comparison
+    print(np.exp(numerator) / np.exp(denominator))  # this actually gives us [0. ], prob cause of underflow, tis why we should keep things in base e as long as possible
     
     # finally we can subtract in base e to perform division in non-e
     return numerator - denominator  # cause it's still in base e
+    # btw, our return is a single valued vector [v_0], we can easily extend this to returning a larger vector
 
     
 def logLik( log_Bs, myTheta ):
@@ -151,11 +153,28 @@ def logLik( log_Bs, myTheta ):
 
         log_Bs(m,t) is the log probability of vector x_t in component m, which is computed and stored outside of this function for efficiency. 
 
+
         See equation 3 of the handout
     '''
-    print( 'TODO' )
-
     # log_Bs a list of log probabilities of x_t in different components m
+
+    # get the b_m(x_t) via log_Bs[m][t] -> a scalar (for vectorization, we can use log_Bs[m] -> precomputation for t=1..T for m)
+
+    M = np.shape(log_Bs)[0]
+    T = np.shape(log_Bs)[1]
+    # non vectorized, gonna need nested for loops
+    P = 0
+    P_arr = np.zeros(T)
+    for t in range(T):
+
+        arr = np.zeros(M)
+        for m in range(M):
+            arr[m] = np.log(myTheta.omega[m]) + log_Bs[m][t]
+        P += scipy.special.logsumexp(arr)  # adding log p(x_t, theta_s)
+
+    # vectorized, only outer for loop
+
+    return P
 
     
 def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
