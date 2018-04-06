@@ -16,7 +16,7 @@ class theta:
         # but Sigma isn't an n x n matrix...
 
 
-def log_b_m_x( m, x, myTheta, preComputedForM=[]):
+def log_b_m_x( m, x, myTheta, preComputedForM=None):  # preComputedForM can be a numpy array, changed signature to reflect this
     ''' Returns the log probability of d-dimensional vector x using only component m of model myTheta
         See equation 1 of the handout
 
@@ -24,13 +24,17 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
         If you do this, you pass that precomputed component in preComputedForM
 
         m (int): index of gaussian mixture component (0 to M-1)
-        x ((1, d) numpy array): d-dimensional vector
+        x ((1, d) numpy array): d-dimensional vector, or x ((T, d)) which is just X
         myTheta (theta): contains omega/mu/Sigma for this m_th component
         preComputedForM (list of floats): list of precomputed term for each m
     '''
 
-    b = 0
-    d = np.shape(x)[0]
+    M = np.shape(myTheta.omega)[0]
+    b = np.zeros(M)#0
+    d = np.shape(myTheta.mu)[1]
+
+    T = np.shape(x)[0]  # x is of shape (10000+, 13)
+    print(T)
 
     if not preComputedForM:
 
@@ -69,14 +73,23 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
 
 
         # try to use the tut slide formula insteadof eqn 1 of handout
-        first_term = 0
+        #first_term = 0 ##
         second_term = (d / 2.0) * np.log(2 * np.pi)
-        third_term = 1
+        #third_term = 1 ##
+
+
+        first_term = np.zeros(T)
+        third_term = np.ones(T)
+
 
         for n in range(0, d):  # up to, including d -> actually, it should be indexed from 0
-
-            first_term += ((x[n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
+            #print(((x[n] - myTheta.mu[m, ]) ** 2) * ((2 * myTheta.Sigma[m, ]) ** -1))
+            #print(x[:,n])
+            first_term += ((x[:,n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
             third_term *= myTheta.Sigma[m][n]
+
+            #first_term += ((x[n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
+            #third_term *= myTheta.Sigma[m][n]
 
         third_term = 0.5 * np.log(third_term)
         b = -first_term - second_term - third_term  # in log e
@@ -107,6 +120,8 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
     # return either a single log probability for x
     # or a Tx1 array of log probabilities for X, each entry corresponding to frame t=1..T
     # which it returns will be based on the dimensions of x
+
+    # to vectorize, we return a d-dimensional vector instead of a scalar
     return b
     
 
@@ -182,28 +197,28 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
         Train a model for the given speaker. Returns the theta (omega, mu, sigma)
 
         speaker (string): speaker's identifying name
-        X ((N, d) numpy array): data matrix, N is the number of frames/rows, d the data dimension
+        X ((N, d) numpy array): data matrix, N is the number of frames/rows, d the data dimension (13)
         M (int): number of GMMs
-        epsilon (float): 
+        epsilon (float): threshold for our convergence
         maxIter (int): max number of iterations before breaking
     '''
+
+
+    ### 1. Initialize theta for this speaker ###
     myTheta = theta( speaker, M, X.shape[1] )
-
-
 
     myTheta.omega = np.random.rand(M, 1)  # initialize with random values
     myTheta.omega /= np.sum(myTheta.omega)  # divide matrix by sum of its values to make sure new sum of values equal 1
     # we chose random between 1.0 and 2.0 to ensure we never get an unlucky streak of low numbers and possibly not add up to 1.0
     # actually we don't have to, cause since we divide by sum of all values, it will also add to 1.0
 
-    N = np.shape(X)[0]
-    d = X.shape[1]
+    N = np.shape(X)[0]  # num of frames/rows of X
+    d = np.shape(X)[1]  # data dimension of X
 
 
     # init mu to random MFCC vector from X
     for m in range(M):
         myTheta.mu[m] = X[random.randint(0, N)]
-
     #print(myTheta.mu)
     
     myTheta.Sigma = np.ones((M, d))#np.eye(N=M, M=X.shape[1])
@@ -212,16 +227,41 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     #print(myTheta.omega)
     #print(np.sum(myTheta.omega))
 
-    #print(scipy.special.logsumexp(-44444))
-    #print(np.exp(-0.5) * np.exp(2))
-    #print(np.exp(-1))
-    
-    for n in range(N):
-        for m in range(M):
 
-            #print(log_b_m_x(m, X[n,], myTheta), flush=True)
-            print(log_p_m_x(m, X[n,], myTheta), flush=True)
-            pass
+
+
+
+
+    iteration = 0
+
+    ### For either maxIter steps, or until convergence, repeat the following 2 steps ###
+    while True:
+
+        ### 2. Expectation ###
+        log_Bs = np.zeros((M, N))  # N = T = num of frames = num of rows of X
+        #print (np.shape(log_Bs))
+
+
+
+
+        ### 3. Maximization: update our theta ###
+        prevTheta = myTheta  # we will always set the prev theta to the myTheta before updating it
+        # we need this to compare log P(X|theta_i+1) - log P(X|theta_i) < epsilon
+
+
+
+
+        iteration += 1
+        #if (iteration >= maxIter) or (logLik(log_Bs, myTheta) - logLik(log_Bs, prevTheta) < epsilon):
+        break
+
+    
+    #for n in range(N):
+    for m in range(M):
+
+        print(log_b_m_x(m, X, myTheta), flush=True)
+        #print(log_p_m_x(m, X[n,], myTheta), flush=True)
+        pass
 
 
     return myTheta
