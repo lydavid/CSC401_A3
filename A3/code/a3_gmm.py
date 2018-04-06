@@ -35,37 +35,51 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
     if not preComputedForM:
 
         # actually, just compute whole thing (using original equation from handout rather than expanded out version from tut)
-        b_1 = 0
-        b_2 = 1
+        #b_1 = 0
+        #b_2 = 1
 
-        arr = np.zeros(d)
+        #arr = np.zeros(d)
 
-        for n in range(d):  # get the d of the d-dimensional vector
+        #for n in range(d):  # get the d of the d-dimensional vector
             #print("x[n]=%f" % x[n])
             #b_1 += ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
 
-            arr[n] = -0.5 * ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
+        #     arr[n] = -0.5 * ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
 
-            b_2 *= myTheta.Sigma[m][n]
+        #     b_2 *= myTheta.Sigma[m][n]
 
 
-        #print("1 %f" % b_1)
-        #b_1 *= -0.5
-        #print("2 %f" % b_1)
-        #print("2.1 %f" % np.exp(b_1))
-        #b_1 = np.exp(b_1) # instead of this, store all comp of b_1 in array, use logsumexp on it
-        b_1 = scipy.special.logsumexp(arr)  # final result is not in e
-        print("1 %f" % b_1)
-        b_1 = np.exp(b_1)
-        print ("2 %f" % b_1)  # e^this
+        # #print("1 %f" % b_1)
+        # #b_1 *= -0.5
+        # #print("2 %f" % b_1)
+        # #print("2.1 %f" % np.exp(b_1))
+        # #b_1 = np.exp(b_1) # instead of this, store all comp of b_1 in array, use logsumexp on it
+        # b_1 = scipy.special.logsumexp(arr)  # final result is not in e
+        # print("1 %f" % b_1)
+        # b_1 = np.exp(b_1)
+        # print ("2 %f" % b_1)  # e^this
 
-        b_2 **= 0.5
-        b_2 *= (2 * np.pi) ** (d / 2.0)
+        # b_2 **= 0.5
+        # b_2 *= (2 * np.pi) ** (d / 2.0)
 
-        print("%f / %f" % (b_1, b_2))
+        # print("%f / %f" % (b_1, b_2))
 
-        b = b_1 / b_2
-        b = np.log(b)  # final return should be in log e
+        # b = b_1 / b_2
+        # b = np.log(b)  # final return should be in log e
+
+
+        # try to use the tut slide formula insteadof eqn 1 of handout
+        first_term = 0
+        second_term = (d / 2.0) * np.log(2 * np.pi)
+        third_term = 1
+
+        for n in range(0, d):  # up to, including d -> actually, it should be indexed from 0
+
+            first_term += ((x[n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
+            third_term *= myTheta.Sigma[m][n]
+
+        third_term = 0.5 * np.log(third_term)
+        b = -first_term - second_term - third_term  # in log e
 
     else:
 
@@ -108,17 +122,22 @@ def log_p_m_x( m, x, myTheta):
 
     # how would we pass in precomputation for m if we have to call this function here...
     numerator = np.log(myTheta.omega[m]) + log_b_m_x(m, x, myTheta)
-
+    print("numerator=%f" % numerator)
 
     M = np.shape(myTheta.omega)[0]
 
     a = np.zeros(M)  # stores all our b_k(x_t) for k=1..M, which are in log
     for k in range(M):
-        a[k] = np.log(myTheta.omega[k]) + log_b_m_x(k, x, myTheta) # maybe use this instead?
+        a[k] = np.log(myTheta.omega[k]) + log_b_m_x(k, x, myTheta) # a[k] in base e
 
-    denominator = scipy.special.logsumexp(a)  # this is not base e
-    denominator = 
+    denominator = scipy.special.logsumexp(a)  # np.log(np.exp(a[0]) + ... + np.exp(a[M]))
+    # np.exp(a[k]) becomes non base e again, and their sum is what we want in the denom of eqn 2
+    # np.log(that) then puts our denom in base e
 
+
+    # for comparison
+    
+    # finally we can subtract in base e to perform division in non-e
     return numerator - denominator  # cause it's still in base e
 
     
@@ -181,7 +200,8 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     for n in range(N):
         for m in range(M):
 
-            print(log_b_m_x(m, X[n,], myTheta), flush=True)
+            #print(log_b_m_x(m, X[n,], myTheta), flush=True)
+            print(log_p_m_x(m, X[n,], myTheta), flush=True)
             pass
 
 
