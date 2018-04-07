@@ -3,9 +3,10 @@ import numpy as np
 import os, fnmatch
 import random
 import scipy
+#np.set_printoptions(threshold=np.inf)
 
-#dataDir = '/u/cs401/A3/data/'
-dataDir = '../data/' # TODO: change this back before submission
+dataDir = '/u/cs401/A3/data/'
+#dataDir = '../data/' # TODO: change this back before submission
 
 class theta:
     def __init__(self, name, M=8,d=13):
@@ -13,7 +14,6 @@ class theta:
         self.omega = np.zeros((M,1)) # weights of each m GMM: initialize randomly, sum should equal 1 at all time cause it's the prob of a GMM
         self.mu = np.zeros((M,d))  # means: should init with actual random MFCC vector from each speaker
         self.Sigma = np.zeros((M,d))  # should init this with identity matrix, do it before passing to in train, before passing to bmx etc
-        # but Sigma isn't an n x n matrix...
 
 
 def log_b_m_x( m, x, myTheta, preComputedForM=None):  # preComputedForM can be a numpy array, changed signature to reflect this
@@ -24,7 +24,7 @@ def log_b_m_x( m, x, myTheta, preComputedForM=None):  # preComputedForM can be a
         If you do this, you pass that precomputed component in preComputedForM
 
         m (int): index of gaussian mixture component (0 to M-1)
-        x ((1, d) numpy array): d-dimensional vector, or x ((T, d)) which is just X
+        x ((T, d) numpy array): d-dimensional vector
         myTheta (theta): contains omega/mu/Sigma for this m_th component
         preComputedForM (list of floats): list of precomputed term for each m
     '''
@@ -34,62 +34,23 @@ def log_b_m_x( m, x, myTheta, preComputedForM=None):  # preComputedForM can be a
     d = np.shape(myTheta.mu)[1]
 
     T = np.shape(x)[0]  # x is of shape (10000+, 13)
-    print(T)
 
     if not preComputedForM:
 
-        # actually, just compute whole thing (using original equation from handout rather than expanded out version from tut)
-        #b_1 = 0
-        #b_2 = 1
-
-        #arr = np.zeros(d)
-
-        #for n in range(d):  # get the d of the d-dimensional vector
-            #print("x[n]=%f" % x[n])
-            #b_1 += ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
-
-        #     arr[n] = -0.5 * ((x[n] - myTheta.mu[m][n]) ** 2.0) / myTheta.Sigma[m][n]
-
-        #     b_2 *= myTheta.Sigma[m][n]
-
-
-        # #print("1 %f" % b_1)
-        # #b_1 *= -0.5
-        # #print("2 %f" % b_1)
-        # #print("2.1 %f" % np.exp(b_1))
-        # #b_1 = np.exp(b_1) # instead of this, store all comp of b_1 in array, use logsumexp on it
-        # b_1 = scipy.special.logsumexp(arr)  # final result is not in e
-        # print("1 %f" % b_1)
-        # b_1 = np.exp(b_1)
-        # print ("2 %f" % b_1)  # e^this
-
-        # b_2 **= 0.5
-        # b_2 *= (2 * np.pi) ** (d / 2.0)
-
-        # print("%f / %f" % (b_1, b_2))
-
-        # b = b_1 / b_2
-        # b = np.log(b)  # final return should be in log e
-
-
         # try to use the tut slide formula insteadof eqn 1 of handout
-        #first_term = 0 ##
-        second_term = (d / 2.0) * np.log(2 * np.pi)
-        #third_term = 1 ##
-
-
         first_term = np.zeros(T)
+        second_term = (d / 2.0) * np.log(2 * np.pi)
         third_term = np.ones(T)
 
-
         for n in range(0, d):  # up to, including d -> actually, it should be indexed from 0
-            #print(((x[n] - myTheta.mu[m, ]) ** 2) * ((2 * myTheta.Sigma[m, ]) ** -1))
-            #print(x[:,n])
-            first_term += ((x[:,n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
-            third_term *= myTheta.Sigma[m][n]
 
-            #first_term += ((x[n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
-            #third_term *= myTheta.Sigma[m][n]
+            if (np.shape(x)[0] == d):
+                first_term += ((x[n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
+                third_term *= myTheta.Sigma[m][n]
+            else:
+                first_term += ((x[:,n] - myTheta.mu[m][n]) ** 2) * ((2 * myTheta.Sigma[m][n]) ** -1)
+                third_term *= myTheta.Sigma[m][n]
+          
 
         third_term = 0.5 * np.log(third_term)
         b = -first_term - second_term - third_term  # in log e
@@ -112,16 +73,10 @@ def log_b_m_x( m, x, myTheta, preComputedForM=None):  # preComputedForM can be a
         first_half = -first_half # add minus in front
         b = first_half - second_half # make sure to not compute second half with that minus sign in front
 
-    # only returns the log prob
-
-    # thus to have access to precomputation for m, we can make a helper function
-    # but include a case in this function to compute the whole thing if not given precomputation
-
     # return either a single log probability for x
     # or a Tx1 array of log probabilities for X, each entry corresponding to frame t=1..T
     # which it returns will be based on the dimensions of x
 
-    # to vectorize, we return a d-dimensional vector instead of a scalar
     return b
     
 
@@ -130,28 +85,27 @@ def log_p_m_x( m, x, myTheta):
         See equation 2 of handout
 
         m (int): index of gaussian mixture component (0 to M-1)
-        x ((1, d) numpy array): d-dimensional vector
+        x ((T, d) numpy array): d-dimensional vector
         myTheta (theta): contains omega/mu/Sigma for this m_th component
     '''
 
 
     # how would we pass in precomputation for m if we have to call this function here...
     numerator = np.log(myTheta.omega[m]) + log_b_m_x(m, x, myTheta)
-    print("numerator=%f" % numerator)
 
     M = np.shape(myTheta.omega)[0]
 
-    a = np.zeros(M)  # stores all our b_k(x_t) for k=1..M, which are in log
+    #a = np.zeros(M)  # stores all our b_k(x_t) for k=1..M, which are in log
+    c = np.zeros(np.shape(x)[0])
     for k in range(M):
-        a[k] = np.log(myTheta.omega[k]) + log_b_m_x(k, x, myTheta) # a[k] in base e
 
-    denominator = scipy.special.logsumexp(a)  # np.log(np.exp(a[0]) + ... + np.exp(a[M]))
-    # np.exp(a[k]) becomes non base e again, and their sum is what we want in the denom of eqn 2
-    # np.log(that) then puts our denom in base e
-    print("denominator=%f" % denominator)
+        c += scipy.special.logsumexp(a=log_b_m_x(k, x, myTheta), b=myTheta.omega[k])
+        # If b is given then np.log(np.sum(b*np.exp(a))) is returned.
+
+    denominator = c
 
     # for comparison
-    print(np.exp(numerator) / np.exp(denominator))  # this actually gives us [0. ], prob cause of underflow, tis why we should keep things in base e as long as possible
+    #print(np.exp(numerator) / np.exp(denominator))  # this actually gives us [0. ], prob cause of underflow, tis why we should keep things in base e as long as possible
     
     # finally we can subtract in base e to perform division in non-e
     return numerator - denominator  # cause it's still in base e
@@ -207,62 +161,72 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     ### 1. Initialize theta for this speaker ###
     myTheta = theta( speaker, M, X.shape[1] )
 
-    myTheta.omega = np.random.rand(M, 1)  # initialize with random values
-    myTheta.omega /= np.sum(myTheta.omega)  # divide matrix by sum of its values to make sure new sum of values equal 1
-    # we chose random between 1.0 and 2.0 to ensure we never get an unlucky streak of low numbers and possibly not add up to 1.0
-    # actually we don't have to, cause since we divide by sum of all values, it will also add to 1.0
-
-    N = np.shape(X)[0]  # num of frames/rows of X
+    N = np.shape(X)[0]  # N=T=num of frames/rows of X
     d = np.shape(X)[1]  # data dimension of X
 
+    myTheta.omega = np.random.rand(M, 1)  # initialize with random values
+    myTheta.omega /= np.sum(myTheta.omega)  # divide matrix by sum of its values to make sure new sum of values equal 1
 
     # init mu to random MFCC vector from X
     for m in range(M):
         myTheta.mu[m] = X[random.randint(0, N)]
-    #print(myTheta.mu)
     
-    myTheta.Sigma = np.ones((M, d))#np.eye(N=M, M=X.shape[1])
-    #myTheta.Sigma = np.identity(M)
-    #print(myTheta.Sigma)
-    #print(myTheta.omega)
-    #print(np.sum(myTheta.omega))
-
-
-
-
+    myTheta.Sigma = np.ones((M, d))
 
 
     iteration = 0
 
     ### For either maxIter steps, or until convergence, repeat the following 2 steps ###
     while True:
+        print("Iteration %d" % (iteration + 1))
 
         ### 2. Expectation ###
         log_Bs = np.zeros((M, N))  # N = T = num of frames = num of rows of X
-        #print (np.shape(log_Bs))
-
-
-
+        log_pmx = np.zeros((M, N))
+        for m in range(M):
+            log_Bs[m, ] = log_b_m_x(m, X, myTheta)
+            log_pmx[m, ] = log_p_m_x(m, X, myTheta)
+            
 
         ### 3. Maximization: update our theta ###
         prevTheta = myTheta  # we will always set the prev theta to the myTheta before updating it
         # we need this to compare log P(X|theta_i+1) - log P(X|theta_i) < epsilon
 
+        # note: we are supposed to exponentiate pmx in the updating part, ie below...
 
+        for m in range(M):
+            new_omega = 0
+
+            new_mu = np.zeros((1, d))
+            new_mu_denom = 0
+
+            new_sigma_col = np.zeros((1, d))
+            new_sigma_col_denom = 0
+
+            for t in range(N):
+
+                new_omega += np.exp(log_pmx[m, t])
+
+                new_mu += np.exp(log_pmx[m, t]) * X[t, ] 
+                new_mu_denom += np.exp(log_pmx[m, t])
+
+                new_sigma_col += np.exp(log_pmx[m, t]) * (X[t, ] ** 2)
+                new_sigma_col_denom += np.exp(log_pmx[m, t])
+
+            new_omega /= N
+            myTheta.omega[m] = new_omega
+
+            new_mu /= new_mu_denom
+            myTheta.mu[m, ] = new_mu
+
+            new_sigma_col /= new_sigma_col_denom
+            new_sigma_col -= (new_mu ** 2)
+            myTheta.Sigma[m, ] = new_sigma_col
 
 
         iteration += 1
-        #if (iteration >= maxIter) or (logLik(log_Bs, myTheta) - logLik(log_Bs, prevTheta) < epsilon):
-        break
-
-    
-    #for n in range(N):
-    for m in range(M):
-
-        print(log_b_m_x(m, X, myTheta), flush=True)
-        #print(log_p_m_x(m, X[n,], myTheta), flush=True)
-        pass
-
+        if (iteration >= maxIter) or (logLik(log_Bs, myTheta) - logLik(log_Bs, prevTheta) < epsilon):
+            break
 
     return myTheta
 
